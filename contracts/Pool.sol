@@ -5,8 +5,9 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
 import "@openzeppelin/contracts/math/SafeMath.sol";
+import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 
-contract Pool is Ownable {
+contract Pool is Ownable, ReentrancyGuard {
     using SafeMath for uint256;
     using SafeERC20 for IERC20;
 
@@ -31,7 +32,7 @@ contract Pool is Ownable {
         token = token_;
     }
 
-    function deposit(uint256 amount) external {
+    function deposit(uint256 amount) external nonReentrant {
         require(amount != 0, "Can't deposit zero amount");
         Deposit[] storage instance = userDeposits[msg.sender];
 
@@ -44,17 +45,19 @@ contract Pool is Ownable {
         emit LogDeposit(amountToDeposit, withdrawTime);
     }
 
-    function withdraw(uint256 index) external {
+    function withdraw(uint256 index) external nonReentrant {
         Deposit storage instance = userDeposits[msg.sender][index];
 
         require(instance.time >= block.timestamp, "Deposit time not finished");
         require(instance.amount != 0, "Amount already withdrawn");
 
+        uint256 balance = instance.amount;
+        instance.amount = 0;
+
         token.safeTransfer(
             msg.sender,
-            token.totalSupply().mul(instance.amount).div(10**18)
+            token.totalSupply().mul(balance).div(10**18)
         );
-        instance.amount = 0;
 
         emit LogWithdraw(msg.sender, index);
     }
