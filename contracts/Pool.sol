@@ -18,13 +18,20 @@ contract Pool is Ownable, ReentrancyGuard {
         uint256 amountShare;
         uint256 time;
     }
+
+    mapping(address => uint256) public userDepositsLength;
     mapping(address => Deposit[]) public userDeposits;
 
     uint256 public depositTime;
     IERC20 public token;
+    bool enabled;
 
     function setDepositTime(uint256 depositTime_) external onlyOwner {
         depositTime = depositTime_;
+    }
+
+    function setEnabled() external onlyOwner {
+        enabled = true;
     }
 
     constructor(uint256 depositTime_, IERC20 token_) public {
@@ -33,12 +40,14 @@ contract Pool is Ownable, ReentrancyGuard {
     }
 
     function deposit(uint256 amount) external nonReentrant {
+        require(enabled, "Only deposit when enabled");
         require(amount != 0, "Can't deposit zero amount");
         Deposit[] storage instance = userDeposits[msg.sender];
 
         uint256 amountToShare = amount.mul(10**18).div(token.totalSupply());
         uint256 withdrawTime = block.timestamp.add(depositTime);
 
+        userDepositsLength[msg.sender] = userDepositsLength[msg.sender].add(1);
         instance.push(Deposit(amountToShare, withdrawTime));
         token.safeTransferFrom(msg.sender, address(this), amount);
 
@@ -78,8 +87,6 @@ contract Pool is Ownable, ReentrancyGuard {
                     token.totalSupply().mul(balance).div(10**18)
                 );
             }
-
-            emit LogWithdraw(msg.sender, index);
         }
     }
 }
