@@ -11,11 +11,11 @@ contract Pool is Ownable, ReentrancyGuard {
     using SafeMath for uint256;
     using SafeERC20 for IERC20;
 
-    event LogDeposit(address sender,uint256 amount, uint256 time);
+    event LogDeposit(address sender, uint256 amount, uint256 time);
     event LogWithdraw(address user, uint256 index);
 
     struct Deposit {
-        uint256 amount;
+        uint256 amountShare;
         uint256 time;
     }
     mapping(address => Deposit[]) public userDeposits;
@@ -36,11 +36,11 @@ contract Pool is Ownable, ReentrancyGuard {
         require(amount != 0, "Can't deposit zero amount");
         Deposit[] storage instance = userDeposits[msg.sender];
 
-        uint256 amountToDeposit = amount.mul(10**18).div(token.totalSupply());
+        uint256 amountToShare = amount.mul(10**18).div(token.totalSupply());
         uint256 withdrawTime = block.timestamp.add(depositTime);
 
-        instance.push(Deposit(amount, withdrawTime));
-        token.safeTransferFrom(msg.sender, address(this), amountToDeposit);
+        instance.push(Deposit(amountToShare, withdrawTime));
+        token.safeTransferFrom(msg.sender, address(this), amount);
 
         emit LogDeposit(msg.sender, amount, withdrawTime);
     }
@@ -49,10 +49,10 @@ contract Pool is Ownable, ReentrancyGuard {
         Deposit storage instance = userDeposits[msg.sender][index];
 
         require(instance.time >= block.timestamp, "Deposit time not finished");
-        require(instance.amount != 0, "Amount already withdrawn");
+        require(instance.amountShare != 0, "Amount already withdrawn");
 
-        uint256 balance = instance.amount;
-        instance.amount = 0;
+        uint256 balance = instance.amountShare;
+        instance.amountShare = 0;
 
         token.safeTransfer(
             msg.sender,
@@ -60,5 +60,26 @@ contract Pool is Ownable, ReentrancyGuard {
         );
 
         emit LogWithdraw(msg.sender, index);
+    }
+
+    function withdrawAll() external nonReentrant {
+        Deposit[] storage instance = userDeposits[msg.sender];
+
+        for (uint256 index = 0; index < instance.length; index = index.add(1)) {
+            if (
+                instance[index].time >= block.timestamp &&
+                instance[index].amountShare != 0
+            ) {
+                uint256 balance = instance[index].amountShare;
+                instance[index].amountShare = 0;
+
+                token.safeTransfer(
+                    msg.sender,
+                    token.totalSupply().mul(balance).div(10**18)
+                );
+            }
+
+            emit LogWithdraw(msg.sender, index);
+        }
     }
 }
