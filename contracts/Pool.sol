@@ -11,16 +11,16 @@ contract Pool is Ownable, ReentrancyGuard {
     using SafeMath for uint256;
     using SafeERC20 for IERC20;
 
-    event LogDeposit(uint256 amount, uint256 time);
+    event LogDeposit(address sender,uint256 amount, uint256 time);
     event LogWithdraw(address user, uint256 index);
 
     struct Deposit {
         uint256 amount;
         uint256 time;
     }
-    mapping(address => Deposit[]) userDeposits;
+    mapping(address => Deposit[]) public userDeposits;
 
-    uint256 depositTime;
+    uint256 public depositTime;
     IERC20 public token;
 
     function setDepositTime(uint256 depositTime_) external onlyOwner {
@@ -39,10 +39,10 @@ contract Pool is Ownable, ReentrancyGuard {
         uint256 amountToDeposit = amount.mul(10**18).div(token.totalSupply());
         uint256 withdrawTime = block.timestamp.add(depositTime);
 
-        instance.push(Deposit(amountToDeposit, withdrawTime));
+        instance.push(Deposit(amount, withdrawTime));
         token.safeTransferFrom(msg.sender, address(this), amountToDeposit);
 
-        emit LogDeposit(amountToDeposit, withdrawTime);
+        emit LogDeposit(msg.sender, amount, withdrawTime);
     }
 
     function withdraw(uint256 index) external nonReentrant {
