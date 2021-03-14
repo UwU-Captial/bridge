@@ -24,7 +24,7 @@ contract Pool is Ownable, ReentrancyGuard {
 
     uint256 public depositTime;
     IERC20 public token;
-    bool enabled;
+    bool public enabled;
 
     function setDepositTime(uint256 depositTime_) external onlyOwner {
         depositTime = depositTime_;
@@ -57,8 +57,8 @@ contract Pool is Ownable, ReentrancyGuard {
     function withdraw(uint256 index) external nonReentrant {
         Deposit storage instance = userDeposits[msg.sender][index];
 
-        require(instance.time >= block.timestamp, "Deposit time not finished");
         require(instance.amountShare != 0, "Amount already withdrawn");
+        require(block.timestamp >= instance.time, "Deposit time not finished");
 
         uint256 balance = instance.amountShare;
         instance.amountShare = 0;
@@ -76,8 +76,8 @@ contract Pool is Ownable, ReentrancyGuard {
 
         for (uint256 index = 0; index < instance.length; index = index.add(1)) {
             if (
-                instance[index].time >= block.timestamp &&
-                instance[index].amountShare != 0
+                instance[index].amountShare != 0 &&
+                block.timestamp >= instance[index].time 
             ) {
                 uint256 balance = instance[index].amountShare;
                 instance[index].amountShare = 0;
