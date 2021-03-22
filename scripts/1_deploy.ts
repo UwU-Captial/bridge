@@ -1,9 +1,7 @@
 import { ethers } from 'hardhat';
 
 import PoolArtifact from '../artifacts/contracts/Pool.sol/Pool.json';
-import TokenArtifact from '../artifacts/contracts/mock/Token.sol/Token.json';
 
-import { TokenFactory } from '../type/TokenFactory';
 import { PoolFactory } from '../type/PoolFactory';
 
 import { promises } from 'fs';
@@ -13,36 +11,22 @@ async function main() {
 	const account = await signer[0].getAddress();
 
 	let contractAddresses = {
-		debase: '',
-		debaseDaiLp: '',
+		debase: '0x9248c485b0B80f76DA451f167A8db30F33C70907',
+		debaseDaiLp: '0xE98f89a2B3AeCDBE2118202826478Eb02434459A',
 		debasePool: '',
 		debaseDaiLpPool: ''
 	};
 
 	try {
-		const debaseFactory = (new ethers.ContractFactory(
-			TokenArtifact.abi,
-			TokenArtifact.bytecode,
-			signer[0]
-		) as any) as TokenFactory;
-
 		const poolFactory = (new ethers.ContractFactory(
 			PoolArtifact.abi,
 			PoolArtifact.bytecode,
 			signer[0]
 		) as any) as PoolFactory;
 
-		const debase = await debaseFactory.deploy('DEBASE', 'DEBASE');
-		const debaseDaiLP = await debaseFactory.deploy('LP', 'LP');
+		const debasePool = await poolFactory.deploy(60 * 60 * 24 * 14, contractAddresses.debase);
+		const debaseDaiLpPool = await poolFactory.deploy(60 * 60 * 24 * 14, contractAddresses.debaseDaiLp);
 
-		const debasePool = await poolFactory.deploy(60 * 20, debase.address);
-		const debaseDaiLpPool = await poolFactory.deploy(60 * 20, debaseDaiLP.address);
-
-		await debasePool.setEnabled();
-		await debaseDaiLpPool.setEnabled();
-
-		contractAddresses.debase = debase.address;
-		contractAddresses.debaseDaiLp = debaseDaiLP.address;
 		contractAddresses.debasePool = debasePool.address;
 		contractAddresses.debaseDaiLpPool = debaseDaiLpPool.address;
 
